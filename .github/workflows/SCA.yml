@@ -1,0 +1,37 @@
+name: "SCA with Snyk (JavaScript)"
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  snyk_scan:
+    runs-on: ubuntu-latest
+    name: Run Snyk Scan
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'  # Adjust according to your Node.js version
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Install Snyk
+        run: npm install -g snyk
+
+      - name: Authenticate with Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }} # Snyk API Token
+
+      - name: Run Snyk to test for vulnerabilities
+        run: snyk test --all-projects  # Runs Snyk test for all projects
+
+      - name: Upload Snyk Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: snyk-report
+          path: snyk-report.json  # Snyk report is saved in JSON format by default
