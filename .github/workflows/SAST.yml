@@ -19,6 +19,7 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4.0.0
+
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
       with:
@@ -27,7 +28,17 @@ jobs:
         config: |
           paths-ignore:
             - 'data/static/codefixes'
+
     - name: Autobuild
       uses: github/codeql-action/autobuild@v2
+
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
+      with:
+        output: codeql-analysis-result.json  
+
+    - name: Upload CodeQL JSON report
+      uses: actions/upload-artifact@v3
+      with:
+        name: codeql-json-report
+        path: codeql-analysis-result.json  
