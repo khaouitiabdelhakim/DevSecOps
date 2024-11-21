@@ -13,6 +13,7 @@ jobs:
         uses: actions/checkout@v4.0.0
         with:
           ref: master
+
       - name: ZAP Scan
         uses: zaproxy/action-baseline@v0.3.0
         with:
@@ -20,3 +21,9 @@ jobs:
           target: 'https://www.zaproxy.org/'
           rules_file_name: '.zap/rules.tsv'
           cmd_options: '-a'
+
+      - name: Upload ZAP report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: zap-report
+          path: zap-reports/*.html 
