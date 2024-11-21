@@ -19,7 +19,9 @@ jobs:
           node-version: '16'  # Adjust according to your Node.js version
 
       - name: Install Dependencies
-        run: npm install
+        run: |
+          npm install
+          ls node_modules  # List the node_modules directory to verify installation
 
       - name: Install Snyk
         run: npm install -g snyk
