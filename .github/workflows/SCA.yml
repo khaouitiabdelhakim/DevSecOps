@@ -24,7 +24,7 @@ jobs:
           ls node_modules  # List the node_modules directory to verify installation
 
       - name: Install Snyk
-        run: npm install -g snyk
+        run: npm install snyk
 
       - name: Authenticate with Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }} # Uses the GitHub secret
