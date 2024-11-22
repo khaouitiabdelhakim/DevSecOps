@@ -7,7 +7,7 @@ on:
 jobs:
   snyk_scan:
     runs-on: ubuntu-latest
-    name: Run Snyk Scan
+    name: Run Snyk SCA Scan
 
     steps:
       - name: Checkout repository
@@ -17,23 +17,18 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20'
-          
-      - name: Install Snyk
-        run: npm install -g snyk
 
       - name: Install Dependencies
-        run: |
-          npm install
-          ls node_modules  # List the node_modules directory to verify installation
+        run: npm ci
 
       - name: Authenticate with Snyk
-        run: snyk auth ${{ secrets.SNYK_TOKEN }} # Uses the GitHub secret
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk auth $SNYK_TOKEN
 
-      - name: Run Snyk to test for vulnerabilities
-        run: snyk test --all-projects
-
-      - name: Upload Snyk Report
-        uses: actions/upload-artifact@v3
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/setup@v2
         with:
-          name: snyk-report
-          path: snyk-report.json
+          args: test --all-projects --json-file-output=snyk-results.json
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
