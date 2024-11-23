@@ -3,7 +3,7 @@ name: DevSecOps Pipeline
 on:
   push:
     branches:
-      - master
+      - main
 
 permissions:
   contents: write
