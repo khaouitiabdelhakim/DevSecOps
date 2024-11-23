@@ -4,19 +4,29 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   zap_scan:
     runs-on: ubuntu-latest
     name: Scan the web application
     steps:
-      - name: Checkout
+      # Step 1: Checkout Repository
+      - name: Checkout Repository
         uses: actions/checkout@v2
-        with:
-          ref: main
-          
-      - name: Log in to Docker
-        run: echo "${{ secrets.DOCKER_USERNAME }}:${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
+      # Step 2: Debug Docker Setup (Optional)
+      - name: Debug Docker
+        run: |
+          docker --version
+          docker info
+
+      # Step 3: Log in to Docker
+      - name: Log in to Docker
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+      # Step 4: Run ZAP Scan
       - name: ZAP Scan
         uses: zaproxy/action-baseline@v0.6.1
         with:
@@ -24,3 +34,10 @@ jobs:
           target: 'http://testphp.vulnweb.com/'
           rules_file_name: '.zap/rules.tsv'
           cmd_options: '-a'
+
+      # Step 5: Upload Scan Report
+      - name: Upload ZAP Scan Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-scan-report
+          path: owasp-zap-report.html
