@@ -9,6 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     name: Run Snyk SCA Scan
 
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript-typescript' ]
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,3 +41,11 @@ jobs:
           args: test --all-projects --json-file-output=snyk-results.json
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          
+      # Upload Scan Results
+      - name: Upload Scan Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-results
+          path: |
+            snyk-results.json
