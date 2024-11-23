@@ -2,48 +2,45 @@ name: "SCA with Snyk (JavaScript)"
 
 on:
   push:
+    branches:
+      - main
   pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
   security-events: write
 
 jobs:
-
   security_testing:
     name: Security Testing
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Dependencies
-        run: npm install
-
-
+      # Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      # Install Dependencies
+      - name: Install Dependencies
+        run: npm install
+
+      # Run Snyk to check for vulnerabilities and save results
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/setup@master
         with:
-          command: snyk test --json > snyk-results.json
+          command: snyk test --json-file-output=snyk-results.json
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-    
-            
       # Upload Scan Results
-      - name: Upload Scan Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: security-scan-results
-          path: |
-            snyk-results.json
-
-          
       - name: Upload Scan Results
         uses: actions/upload-artifact@v4
         with:
