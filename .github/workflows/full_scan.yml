@@ -1,0 +1,164 @@
+name: "Security and Quality Scans"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  security-events: write
+
+jobs:
+  # SCA with Snyk
+  security_testing:
+    name: Security Testing (SCA with Snyk)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/setup@master
+        with:
+          command: snyk test --json-file-output=snyk-results.json
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Upload Scan Results (Snyk)
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-scan-results
+          path: snyk-results.json
+
+  # SAST with CodeQL
+  sast_analysis:
+    name: SAST with CodeQL
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: 'javascript-typescript'
+          queries: security-extended
+          config: |
+            paths-ignore:
+              - 'data/static/codefixes'
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          output: codeql-analysis-result.json
+
+      - name: Upload CodeQL JSON report
+        uses: actions/upload-artifact@v3
+        with:
+          name: codeql-json-report
+          path: codeql-analysis-result.json
+
+  # DAST with OWASP ZAP
+  dast_scan:
+    name: DAST with OWASP ZAP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Start App
+        run: npm start &
+
+      - name: Start ngrok
+        run: ngrok http 3000 &
+        env:
+          NGROK_AUTHTOKEN: ${{ secrets.NGROK_TOKEN }}
+
+      - name: ZAP Scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          docker_name: 'ghcr.io/zaproxy/zaproxy:stable'
+          target: 'http://localhost:3000'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload ZAP Scan Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-scan-report
+          path: owasp-zap-report.html
+
+  # Container Security Scan
+  container_security_scan:
+    name: Container Security Scan (Trivy)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: |
+          docker build -t myapp:latest .
+
+      - name: Scan Docker Image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'myapp:latest'
+          format: 'json'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          output: 'trivy-report.json'
+
+      - name: Upload Trivy JSON Scan Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-scan-results-json
+          path: trivy-report.json
+
+  # Upload artifacts to SonarCloud
+  sonarcloud_upload:
+    name: Upload Artifacts to SonarCloud
+    runs-on: ubuntu-latest
+    needs: [security_testing, sast_analysis, dast_scan, container_security_scan]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up SonarCloud
+        uses: sonarsource/sonarcloud-github-action@v2
+        with:
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+
+      - name: SonarCloud Analysis
+        run: |
+          sonar-scanner -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
+            -Dsonar.organization=${{ secrets.SONAR_ORG }} \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
