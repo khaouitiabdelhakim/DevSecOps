@@ -16,23 +16,20 @@ env:
   SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }} # SonarCloud token stored as GitHub Secret
 
 jobs:
-  # SCA with Snyk
+  # Security Testing Job
   security_testing:
-    name: Security Testing (SCA with Snyk)
+    name: Security Testing (SCA with Snyk, SAST with CodeQL, DAST with OWASP ZAP, Container Security Scan with Trivy)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
+      # Step 1: Install Dependencies
       - name: Install Dependencies
         run: npm install
 
+      # Step 2: SCA with Snyk
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/setup@master
         with:
@@ -40,21 +37,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-      - name: Upload Scan Results (Snyk)
-        uses: actions/upload-artifact@v4
-        with:
-          name: snyk-scan-results
-          path: snyk-results.json
-
-  # SAST with CodeQL
-  sast_analysis:
-    name: SAST with CodeQL
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
+      # Step 3: SAST with CodeQL
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v2
         with:
@@ -72,29 +55,12 @@ jobs:
         with:
           output: codeql-analysis-result.json
 
-      - name: Upload CodeQL JSON report
-        uses: actions/upload-artifact@v3
-        with:
-          name: codeql-json-report
-          path: codeql-analysis-result.json
-
-  # DAST with OWASP ZAP
-  dast_scan:
-    name: DAST with OWASP ZAP
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Install Dependencies
-        run: npm install
-
+      # Step 4: DAST with OWASP ZAP
       - name: Start App
         run: npm start &
 
       - name: Start ngrok
-        run: ngrok http 3000 &
+        run: ngrok http 3000 & 
         env:
           NGROK_AUTHTOKEN: ${{ secrets.NGROK_TOKEN }}
 
@@ -115,15 +81,7 @@ jobs:
           name: zap-scan-report
           path: owasp-zap-report.html
 
-  # Container Security Scan
-  container_security_scan:
-    name: Container Security Scan (Trivy)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
+      # Step 5: Container Security Scan with Trivy
       - name: Build Docker Image
         run: |
           docker build -t myapp:latest .
@@ -138,13 +96,32 @@ jobs:
           severity: 'CRITICAL,HIGH'
           output: 'trivy-report.json'
 
-      - name: Upload Trivy JSON Scan Results
+      # Step 6: Combine all JSON scan results into one file
+      - name: Combine Scan Results into One JSON
+        run: |
+          # Initialize the combined JSON file
+          echo '{}' > combined-scan-results.json
+
+          # Append Snyk results to combined JSON
+          jq '.snyk = input' snyk-results.json <(cat combined-scan-results.json) > tmp.json && mv tmp.json combined-scan-results.json
+
+          # Append CodeQL results to combined JSON
+          jq '.codeql = input' codeql-analysis-result.json <(cat combined-scan-results.json) > tmp.json && mv tmp.json combined-scan-results.json
+
+          # Append ZAP results to combined JSON
+          jq '.zap = input' owasp-zap-report.html <(cat combined-scan-results.json) > tmp.json && mv tmp.json combined-scan-results.json
+
+          # Append Trivy results to combined JSON
+          jq '.trivy = input' trivy-report.json <(cat combined-scan-results.json) > tmp.json && mv tmp.json combined-scan-results.json
+
+      # Step 7: Upload Combined Scan Results as Artifact
+      - name: Upload Combined Scan Results
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-scan-results-json
-          path: trivy-report.json
+          name: combined-scan-results
+          path: combined-scan-results.json
 
-  # Upload artifacts to SonarCloud
+  # Upload artifacts to SonarCloud (Code Quality)
   sonarcloud_upload:
     runs-on: ubuntu-latest
     name: Code Analysis with SonarCloud
