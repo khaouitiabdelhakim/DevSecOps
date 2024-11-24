@@ -12,6 +12,9 @@ permissions:
   contents: write
   security-events: write
 
+env:
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }} # SonarCloud token stored as GitHub Secret
+
 jobs:
   # SCA with Snyk
   security_testing:
