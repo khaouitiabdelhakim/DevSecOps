@@ -28,15 +28,15 @@ jobs:
         uses: aquasecurity/trivy-action@master # Use the latest version
         with:
           image-ref: 'myapp:latest'
-          format: 'table' # Output format: table or json
+          format: 'json' # Set output format to JSON
           ignore-unfixed: true # Ignore vulnerabilities without fixes
           vuln-type: 'os,library' # Scan OS and application libraries
           severity: 'CRITICAL,HIGH' # Only show high/critical severity issues
-          output: 'trivy-report.txt'
+          output: 'trivy-report.json' # Save output as JSON file
 
-      # Step 4: Upload Scan Results
-      - name: Upload Trivy Scan Results
+      # Step 4: Upload JSON Scan Results
+      - name: Upload Trivy JSON Scan Results
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-scan-results
-          path: trivy-report.txt
+          name: trivy-scan-results-json
+          path: trivy-report.json
