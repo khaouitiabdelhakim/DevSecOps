@@ -1,0 +1,48 @@
+name: "SonarCloud Vulnerability Management"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }} # SonarCloud token stored as GitHub Secret
+
+jobs:
+  sonarcloud-code-scan:
+    runs-on: ubuntu-latest
+    name: Code Analysis with SonarCloud
+
+    steps:
+      # Step 1: Checkout the Code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Java (SonarCloud requires Java for scanner)
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+
+      # Step 3: Run SonarCloud Scan
+      - name: Run SonarCloud Analysis
+        uses: sonarsource/sonarcloud-github-action@v2
+        with:
+          # Your SonarCloud project information
+          projectBaseDir: "."
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+
+      # Step 4: Upload SonarCloud Analysis Report (Optional)
+      - name: Upload SonarCloud Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonarcloud-report
+          path: ".scannerwork/report-task.txt" # Path to SonarCloud report
