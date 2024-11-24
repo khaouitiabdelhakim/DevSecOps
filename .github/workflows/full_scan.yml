@@ -146,22 +146,36 @@ jobs:
 
   # Upload artifacts to SonarCloud
   sonarcloud_upload:
-    name: Upload Artifacts to SonarCloud
     runs-on: ubuntu-latest
-    needs: [security_testing, sast_analysis, dast_scan, container_security_scan]
+    name: Code Analysis with SonarCloud
 
     steps:
-      - name: Checkout Repository
+      # Step 1: Checkout the Code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up SonarCloud
+      # Step 2: Set up Java (with distribution fix)
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      # Step 3: Run SonarCloud Scan
+      - name: Run SonarCloud Analysis
         uses: sonarsource/sonarcloud-github-action@v2
         with:
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
-
-      - name: SonarCloud Analysis
-        run: |
-          sonar-scanner -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
-            -Dsonar.organization=${{ secrets.SONAR_ORG }} \
-            -Dsonar.host.url=https://sonarcloud.io \
+          # Your SonarCloud project information
+          projectBaseDir: "."
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+
+      # Step 4: Upload SonarCloud Analysis Report (Optional)
+      - name: Upload SonarCloud Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonarcloud-report
+          path: ".scannerwork/report-task.txt"
