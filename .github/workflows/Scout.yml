@@ -1,0 +1,42 @@
+name: "Container Security Scan"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  container-security-scan:
+    runs-on: ubuntu-latest
+    name: Scan Container Image for Vulnerabilities
+    steps:
+      # Step 1: Checkout the Code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Step 2: Build the Container Image
+      - name: Build Docker Image
+        run: |
+          docker build -t myapp:latest .
+
+      # Step 3: Run Trivy to Scan the Image
+      - name: Scan Docker Image with Trivy
+        uses: aquasecurity/trivy-action@v0.11.2
+        with:
+          image-ref: 'myapp:latest'
+          format: 'table' # Output format: table or json
+          ignore-unfixed: true # Ignore vulnerabilities without fixes
+          vuln-type: 'os,library' # Scan OS and application libraries
+          severity: 'CRITICAL,HIGH' # Only show high/critical severity issues
+          output: 'trivy-report.txt'
+
+      # Step 4: Upload Scan Results
+      - name: Upload Trivy Scan Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-scan-results
+          path: trivy-report.txt
